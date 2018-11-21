@@ -32,9 +32,10 @@ Now let's get a data.frame without the missing values to have it handy if needed
 ``` {r Rremove_Missing_Values}
 activity_not_na <- activity %>% filter_all(all_vars(!is.na(.))) 
 ```
-
+  
+    
 ## What is mean total number of steps taken per day?
-
+  
 Calculate the mean for each day (ignoring the missing values).  
 After the means are claculated, a "summary" of the results is printed to show the Mean and Median:
 ``` {r Mean_per_Day}
@@ -44,18 +45,79 @@ summary(activity_mean_day)
 
 Now, let's show the Histogram:
 ```{r The_Histogram}
-qplot(activity_mean_day$steps, geom="histogram") 
+qplot(activity_mean_day$steps, geom="histogram", xlab = "Mean per day", bins=30, ylab = "Freq (days)") 
+```
+  
+  
+## What is the average daily activity pattern?
+Calculate the average (mean) for each day (ignoring the missing values).  
+``` {r Mean_per_interval}
+activity_mean_interval <- aggregate(steps~interval, data=activity, mean, na.rm=TRUE)
+summary(activity_mean_interval)
+```
+Now, let's show a time series plot:
+```{r The_time_series}
+ggplot(activity_mean_interval, aes(interval, steps)) + geom_line() +
+  xlab("5-minute Inteval") + ylab("Average of Steps") 
+```
+  
+Now, let's determine which 5-minute interval contains the maximum number of steps:    
+```{r Maximum-5-minute}    
+max_interval <- activity_mean_interval[which.max(activity_mean_interval$steps),]
+max_interval
+```    
+      
+## Imputing missing values
+Calculate and report the total number of missing values in the dataset
+``` {r}
+missing_values <- is.na(activity)
+missing_steps <- sum(missing_values[,1])
+missing_date <- sum(missing_values[,2])
+missing_interval <- sum(missing_values[,3])
+```  
+The total missing values for the column "steps"  : `r missing_steps`   
+The total missing values for the column "date"   : `r missing_date`   
+The total missing values for the column "inteval": `r missing_interval`   
+  
+To fill the missing values for the column "steps", let's use the "mean" for each partiular inteval:
+```{r}
+activity_filled_na <- activity %>% group_by(interval) %>% mutate(steps = ifelse(is.na(steps), mean(steps, na.rm = TRUE), steps))
+head(activity_filled_na)
+```    
+
+Now let's calculate again the mean for each day but now using the new data.frame with filled missing values  
+After the means are calculated, a "summary" of the results is printed to show the Mean and Median:
+``` {r}
+activity_filled_na_mean_day <- aggregate(steps~date, data=activity_filled_na, mean, na.rm=TRUE)
+summary(activity_filled_na_mean_day)
 ```
 
-
-
-
-## What is the average daily activity pattern?
-
-
-
-## Imputing missing values
-
-
-
+Now, let's show the Histogram:
+```{r}
+qplot(activity_filled_na_mean_day$steps, geom="histogram", xlab = "Mean per day", bins=30, ylab = "Freq (days)", main="Histogram with filled missing values") 
+```
+    
+    
+With the method described above to fill the missing values, it doesn't affect that much the results. Perhpas, with other method, other results might be gotton. 
+Although the "1st Qu" and "3rd Qu" are around 4 and 2 point differents (respectivally), the "Median" and the "Mean" didn't change that much.  
+   
+      
 ## Are there differences in activity patterns between weekdays and weekends?
+
+
+```{r}
+activity_filled_na$weekday <- ifelse(weekdays(activity_filled_na$date) %in% c("Saturday", "Sunday"), "weekend", "weekday")
+activity_filled_na$weekday <- factor(activity_filled_na$weekday)
+table(activity_filled_na$weekday)
+```
+  
+Now, let's show a time series plot:
+```{r}
+activity_filled_na_mean_interval <- aggregate(steps~interval+weekday, data=activity_filled_na, mean, na.rm=TRUE)
+ggplot(activity_filled_na_mean_interval, aes(interval, steps)) + geom_line() +
+  facet_grid(weekday~.) + xlab("5-minute Inteval") + ylab("Average of Steps") 
+```     
+  
+Based on the graph shown above, it seems there is more activity (more steps) during the weekends.  
+.  
+.  
